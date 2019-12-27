@@ -5,6 +5,9 @@ const Query = require("./resolvers/Query");
 const Mutation = require("./resolvers/Mutation");
 const User = require("./resolvers/User");
 const Link = require("./resolvers/Link");
+const { rule, shield, and, or } = require("graphql-shield");
+const { getUser } = require("./utils");
+const { ROLES } = require("./constants");
 
 const resolvers = {
   Query,
@@ -13,46 +16,40 @@ const resolvers = {
   Link
 };
 
-// const resolvers = {
-//   Query: {
-//     info: () => `This is the API of a Hackernews Clone`,
-//     link: (parent, args, context) => {
-//       const { id } = args;
-//       return getLink(id, context);
-//     },
-//     feed: (root, args, context, info) => {
-//       return context.prisma.links();
-//     }
-//   },
-//   Mutation: {
-//     post: (root, args, context) => {
-//       return context.prisma.createLink({
-//         url: args.url,
-//         description: args.description
-//       });
-//     },
-//     updateLink: async (parent, args, context) => {
-//       const { id, ...rest } = args;
-//       const updatedLink = await context.prisma.updateLink({
-//         data: { ...rest },
-//         where: { id }
-//       });
-//       return updatedLink;
-//     },
-//     deleteLink: async (parent, args, context) => {
-//       const { id } = args;
-//       const deletedElement = await context.prisma.deleteLink({ id });
-//       return deletedElement;
-//     }
-//   }
-// };
+const isAuthenticated = rule({ cache: "contextual" })(
+  async (parent, args, ctx, info) => {
+    return ctx.user !== null;
+  }
+);
+
+const isAdmin = rule({ cache: "contextual" })(
+  async (parent, args, ctx, info) => {
+    return ctx.user.role === ROLES.ADMIN;
+  }
+);
+
+const isEditor = rule({ cache: "contextual" })(
+  async (parent, args, ctx, info) => {
+    return ctx.user.role === ROLES.EDITOR;
+  }
+);
+
+const permissions = shield({
+  Mutation: {
+    post: isAuthenticated,
+    updateLink: and(isAuthenticated, or(isAdmin, isEditor)),
+    deleteLink: and(isAuthenticated, isAdmin)
+  }
+});
 
 const server = new GraphQLServer({
   typeDefs: "./src/schema.graphql",
   resolvers,
-  context: request => {
+  middlewares: [permissions],
+  context: async ctx => {
     return {
-      ...request,
+      ...ctx,
+      user: await getUser(ctx, prisma),
       prisma
     };
   }

@@ -1,18 +1,18 @@
 const jwt = require("jsonwebtoken");
 const APP_SECRET = "GraphQL-is-aw3some";
 
-function getUserId(context) {
+async function getUser(context, prisma) {
   const Authorization = context.request.get("Authorization");
   if (Authorization) {
     const token = Authorization.replace("Bearer ", "");
     const { userId } = jwt.verify(token, APP_SECRET);
-    return userId;
+    const user = await prisma.user({ id: userId });
+    return user;
   }
-
-  throw new Error("Not authenticated");
+  return null;
 }
 
 module.exports = {
   APP_SECRET,
-  getUserId
+  getUser
 };
