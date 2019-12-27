@@ -1,0 +1,4 @@
+# Dependency directories
+node_modules
+
+src/generated/prisma-client
