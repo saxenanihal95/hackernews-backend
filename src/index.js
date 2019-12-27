@@ -1,18 +1,17 @@
 const { GraphQLServer } = require("graphql-yoga");
 const { prisma } = require("./generated/prisma-client");
 
-let links = [
-  {
-    id: "link-0",
-    url: "www.howtographql.com",
-    description: "Fullstack tutorial for GraphQL"
-  }
-];
+const getLink = async (id, context) => {
+  return await context.prisma.link({ id });
+};
 
 const resolvers = {
   Query: {
     info: () => `This is the API of a Hackernews Clone`,
-    link: (parent, args) => links.find(({ id }) => id === args.id),
+    link: (parent, args, context) => {
+      const { id } = args;
+      return getLink(id, context);
+    },
     feed: (root, args, context, info) => {
       return context.prisma.links();
     }
@@ -24,24 +23,18 @@ const resolvers = {
         description: args.description
       });
     },
-    updateLink: (parent, args) => {
-      index = links.findIndex(({ id }) => id === args.id);
-      if (index !== -1) {
-        links[index] = { ...links[index], ...args };
-        return links[index] || {};
-      } else {
-        return new Error("element not found");
-      }
+    updateLink: async (parent, args, context) => {
+      const { id, ...rest } = args;
+      const updatedLink = await context.prisma.updateLink({
+        data: { ...rest },
+        where: { id }
+      });
+      return updatedLink;
     },
-    deleteLink: (parent, args) => {
-      index = links.findIndex(({ id }) => id === args.id);
-      if (index !== -1) {
-        const deletedElement = links[index];
-        links.splice(index, 1);
-        return deletedElement;
-      } else {
-        return new Error("element not found");
-      }
+    deleteLink: async (parent, args, context) => {
+      const { id } = args;
+      const deletedElement = await context.prisma.deleteLink({ id });
+      return deletedElement;
     }
   }
 };
