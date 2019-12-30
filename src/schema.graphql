@@ -4,6 +4,12 @@ type Query {
   link(id: ID!): Link
 }
 
+enum Roles {
+  ADMIN
+  EDITOR
+  USER
+}
+
 type Mutation {
   post(url: String!, description: String!): Link!
   updateLink(id: ID!, url: String, description: String): Link
@@ -23,6 +29,7 @@ type User {
   id: ID!
   name: String!
   email: String!
+  role: Roles!
   links: [Link!]!
 }
 
